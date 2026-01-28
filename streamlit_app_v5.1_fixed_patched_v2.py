@@ -817,6 +817,7 @@ def generate_interactive_html(data):
     counterparty_nav = '<button class="nav-tab" data-tab="counterparties" onclick="showTab(\'counterparties\')">👥 Counterparties</button>' if counterparties else ''
     
     related_party_nav = '<button class="nav-tab" data-tab="related" onclick="showTab(\'related\')">🧾 Related Party</button>' if related_party_section else ''
+    related_declared_nav = '<button class="nav-tab" data-tab="related_declared" onclick="showTab(\'related_declared\')">👥 Related</button>' if related_parties else ''
     # Generate HTML
     html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -995,10 +996,10 @@ def generate_interactive_html(data):
             <button class="nav-tab" data-tab="categories" onclick="showTab('categories')">📁 Categories</button>
             {counterparty_nav}
             {related_party_nav}
+            {related_declared_nav}
             <button class="nav-tab" data-tab="volatility" onclick="showTab('volatility')">📈 Volatility</button>
             <button class="nav-tab" data-tab="flags" onclick="showTab('flags')">🚩 Flags</button>
             <button class="nav-tab" data-tab="integrity" onclick="showTab('integrity')">✓ Integrity</button>
-            <button class="nav-tab" data-tab="related" onclick="showTab('related')">👥 Related</button>
             {recurring_nav}
             {nonbank_nav}
             <button class="nav-tab" data-tab="recommendations" onclick="showTab('recommendations')">✅ Recs</button>
@@ -1041,7 +1042,7 @@ def generate_interactive_html(data):
                             <div class="turnover-row"><span>Net Flow</span><span class="mono {'debit' if business.get('net_flow',0)<0 else 'credit'}">RM {business.get('net_flow',0):,.2f}</span></div>
                         </div>
                     </div>
-                    <div class="section" style="margin-top:1.5rem">
+                                        <div class="section" style="margin-top:1.5rem">
                         <div class="section-header" onclick="toggleSection('exclusionsDetails')"><h2 class="section-title">🔍 Exclusions Breakdown</h2></div>
                         <div id="exclusionsDetails" class="section-content collapsed">
                             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:2rem">
@@ -1052,12 +1053,22 @@ def generate_interactive_html(data):
                                         <tr><td>Reversals</td><td class="mono text-right">RM {exc_cr_reversals:,.2f}</td></tr>
                                         <tr><td>Loan Disbursement</td><td class="mono text-right">RM {exc_cr_loan:,.2f}</td></tr>
                                         <tr><td>Interest/FD</td><td class="mono text-right">RM {exc_cr_interest:,.2f}</td></tr>
-                                        {inter_transfers_section}
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-categories" class="tab-content">
+                                        <tr style="font-weight:600"><td>Total</td><td class="mono text-right">RM {exc_cr_total:,.2f}</td></tr>
+                                    </table>
+                                </div>
+                                <div><h4 style="color:var(--danger);margin-bottom:1rem">DEBIT EXCLUSIONS</h4>
+                                    <table class="data-table">
+                                        <tr><td>Inter-Account</td><td class="mono text-right">RM {exc_dr_inter:,.2f}</td></tr>
+                                        <tr><td>Related Party</td><td class="mono text-right">RM {exc_dr_related:,.2f}</td></tr>
+                                        <tr><td>Returned Cheque</td><td class="mono text-right">RM {exc_dr_returned:,.2f}</td></tr>
+                                        <tr style="font-weight:600"><td>Total</td><td class="mono text-right">RM {exc_dr_total:,.2f}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {inter_transfers_section}
+<div id="tab-categories" class="tab-content">
             <div class="section">
                 <div class="section-header"><h2 class="section-title">📁 Transaction Categories</h2></div>
                 <div class="section-content">
@@ -1143,7 +1154,7 @@ def generate_interactive_html(data):
             </div>
         </div>
 
-        <div id="tab-related" class="tab-content">
+        <div id="tab-related_declared" class="tab-content">
             <div class="section">
                 <div class="section-header"><h2 class="section-title">👥 Related Party Analysis</h2></div>
                 <div class="section-content">
