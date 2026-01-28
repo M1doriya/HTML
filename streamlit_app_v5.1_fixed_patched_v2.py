@@ -50,6 +50,68 @@ def get_company_name(data):
                 return cleaned
     return 'Unknown'
 
+
+
+def build_related_party_section(data):
+    """Optional HTML section for schema variants that include related party analysis.
+
+    Keeps the core dashboard logic unchanged by only *adding* a block when the JSON provides it.
+    """
+    rp = data.get('related_party_transactions') or {}
+    txns = rp.get('transactions') or []
+    flagged = rp.get('flagged_for_review') or []
+    summary = rp.get('summary') or {}
+    if not (txns or flagged or summary):
+        return ""
+
+    def _num(x, default=0.0):
+        try:
+            return float(x)
+        except Exception:
+            return float(default)
+
+    total_amount = _num(summary.get('total_amount', 0))
+    total_count = int(_num(summary.get('transaction_count', len(txns)), len(txns)))
+
+    # Build a compact table of up to 10 flagged transactions
+    rows = ""
+    if isinstance(flagged, list):
+        for t in flagged[:10]:
+            rows += f"""<tr>
+                <td>{t.get('date','')}</td>
+                <td>{t.get('party','')}</td>
+                <td>{t.get('type','')}</td>
+                <td class='mono text-right'>RM {_num(t.get('amount',0)):,.2f}</td>
+                <td>{t.get('reason','')}</td>
+            </tr>"""
+
+    flagged_table = ""
+    if rows:
+        flagged_table = f"""<div class="card mt-2">
+            <div class="card-header"><h3>Related Party Transactions (Flagged)</h3></div>
+            <div class="card-body">
+                <p class="muted">Showing up to 10 flagged items.</p>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>Date</th><th>Party</th><th>Type</th><th class="text-right">Amount</th><th>Reason</th></tr></thead>
+                        <tbody>{rows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>"""
+
+    header = f"""<div class="card">
+        <div class="card-header"><h3>Related Party Transactions</h3></div>
+        <div class="card-body">
+            <div class="grid grid-3">
+                <div class="stat"><div class="stat-label">Transactions</div><div class="stat-value mono">{total_count}</div></div>
+                <div class="stat"><div class="stat-label">Total Amount</div><div class="stat-value mono">RM {total_amount:,.2f}</div></div>
+                <div class="stat"><div class="stat-label">Flagged</div><div class="stat-value mono">{len(flagged) if isinstance(flagged,list) else 0}</div></div>
+            </div>
+        </div>
+    </div>"""
+
+    return header + flagged_table
 def get_monthly_high(m, schema_version):
     """Get highest balance - supports both v4.0 and v5.0"""
     if schema_version == '5.0':
@@ -84,6 +146,7 @@ def generate_interactive_html(data):
     recommendations = data.get('recommendations', [])
     recurring = data.get('recurring_payments', {})
     non_bank = data.get('non_bank_financing', {})
+    related_party_section = build_related_party_section(data)
     counterparties = data.get('counterparties', {})
     inter_account = data.get('inter_account_transfers', {})
     
@@ -687,6 +750,16 @@ def generate_interactive_html(data):
             </div>
         </div>'''
     
+
+        related_party_tab = ''
+        if related_party_section:
+            related_party_tab = f'''
+        <div id="tab-related" class="tab-content">
+            <div class="section">
+                <div class="section-header"><h2 class="section-title">🧾 Related Party Analysis</h2></div>
+                <div class="section-content">{related_party_section}</div>
+            </div>
+        </div>'''
     # v5.0: Returned cheques flag card
     returned_cheques_html = ""
     if returned_count > 0:
@@ -743,6 +816,7 @@ def generate_interactive_html(data):
     nonbank_nav = '<button class="nav-tab" data-tab="nonbank" onclick="showTab(\'nonbank\')">🏦 Non-Bank</button>' if non_bank else ''
     counterparty_nav = '<button class="nav-tab" data-tab="counterparties" onclick="showTab(\'counterparties\')">👥 Counterparties</button>' if counterparties else ''
     
+    related_party_nav = '<button class="nav-tab" data-tab="related" onclick="showTab(\'related\')">🧾 Related Party</button>' if related_party_section else ''
     # Generate HTML
     html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -920,6 +994,7 @@ def generate_interactive_html(data):
             <button class="nav-tab" data-tab="turnover" onclick="showTab('turnover')">💰 Turnover</button>
             <button class="nav-tab" data-tab="categories" onclick="showTab('categories')">📁 Categories</button>
             {counterparty_nav}
+            {related_party_nav}
             <button class="nav-tab" data-tab="volatility" onclick="showTab('volatility')">📈 Volatility</button>
             <button class="nav-tab" data-tab="flags" onclick="showTab('flags')">🚩 Flags</button>
             <button class="nav-tab" data-tab="integrity" onclick="showTab('integrity')">✓ Integrity</button>
@@ -1000,6 +1075,8 @@ def generate_interactive_html(data):
         </div>
 
         {counterparty_tab}
+
+        {related_party_tab}
 
         <div id="tab-volatility" class="tab-content">
             <div class="section">
